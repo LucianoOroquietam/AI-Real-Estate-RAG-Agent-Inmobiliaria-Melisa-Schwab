@@ -6,7 +6,7 @@ Este proyecto es un ecosistema completo de **IA Aplicada** al sector inmobiliari
 
 ## 🎥 Demo & Workflow
 
-> **[VER VIDEO DEMO AQUÍ]***(Sustituir por link a YouTube/Loom)*
+> **VER VIDEO DEMO AQUÍ***https://www.loom.com/share/a616f442bea84f399916291b6a22dd88*
 
 ---
 
