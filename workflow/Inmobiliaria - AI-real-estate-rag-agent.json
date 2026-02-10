@@ -1,0 +1,1320 @@
+{
+  "name": "Inmobiliaria - AI-real-estate-rag-agent",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -768,
+        2096
+      ],
+      "id": "3defdcb2-d31e-4050-a840-1a835fff1710",
+      "name": "Iniciar Scraping"
+    },
+    {
+      "parameters": {
+        "content": "## Scraping",
+        "height": 800,
+        "width": 1552
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -960,
+        2000
+      ],
+      "typeVersion": 1,
+      "id": "9726421b-d71e-4b17-a42c-dceaf1c7ef9c",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.firecrawl.dev/v1/scrape",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.url }}\",\n  \"formats\": [\"extract\"],\n  \"extract\": {\n    \"prompt\": \"Extrae SOLAMENTE las URLs ABSOLUTAS de fichas de propiedades. En este sitio las fichas suelen cumplir el patrón: https://www.melisaschwabinmobiliaria.com.ar/<slug>-ficha-msw123 (puede ser MSW o msw). Devuelve links únicos. Ignora paginación, WhatsApp, contacto, redes, logos, /propiedades, /propiedades.php y cualquier URL que NO contenga '-ficha-'. Si hay links relativos, conviértelos a absolutos. Solo aceptar links que matcheen el patrón '-ficha-(msw|MSW)\\\\\\\\d+'.\",\n    \"schema\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"links_casas\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"string\"\n          }\n        }\n      },\n      \"required\": [\"links_casas\"]\n    }\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -352,
+        2096
+      ],
+      "id": "23cdd289-fc9b-4237-86d8-f1a8dafc5e34",
+      "name": "FireCrawl - Crawl Listados1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GM6fo8SoUQVIoz5d",
+          "name": "FireCrawl-Auth"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.openai.com/v1/embeddings",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "text-embedding-3-small"
+            },
+            {
+              "name": "input",
+              "value": "={{$json.content}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        2528
+      ],
+      "id": "398f12ed-73eb-41e3-a0b2-3d7e2ac74441",
+      "name": "Embeber los datos - OpenAi2",
+      "alwaysOutputData": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "G6oRJ2S4OuEpWrVM",
+          "name": "OpenAi"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const totalPages = 5; \nconst pages = [];\n\nfor (let i = 0; i < totalPages; i++) {\n  pages.push({\n    json: {\n      url: `https://www.melisaschwabinmobiliaria.com.ar/propiedades.php?p=${i}&ope=All&tipo=All&a1=All&loc=All&key-word=Submit`\n    }\n  });\n}\n\nreturn pages;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        2096
+      ],
+      "id": "afe2e579-661e-45b8-9cb2-e388e47f041c",
+      "name": "Generador de Páginas2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "89051134-7059-4632-bda5-ffeb7888e952",
+              "leftValue": "={{ $json.skipped }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        96,
+        2448
+      ],
+      "id": "d1c26e6d-91fd-4832-995d-da0cd63603b5",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  json: {\n    ok: false,\n    url: $json.url || null,\n    status: $json.status || null,\n    error: $json.message || \"Scrape falló o sin créditos\"\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        2576
+      ],
+      "id": "3cb4dac6-3fb5-43bd-805b-6b182b30a014",
+      "name": "LOG FAIL2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "70d303e7-843e-4946-a0f4-dd5646079970",
+              "name": "url",
+              "value": "={{$json.url}}",
+              "type": "string"
+            },
+            {
+              "id": "245ab7a2-04f3-4a87-8b6b-2b0baefc2f9b",
+              "name": "source_url",
+              "value": "={{$json.url}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -880,
+        2432
+      ],
+      "id": "ef33ccf1-57cf-4796-8b20-621e3af41a7b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -352,
+        2448
+      ],
+      "id": "44529bfe-1fe3-40bb-945e-4faa4ecc060a",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        912,
+        2400
+      ],
+      "id": "a8d34dac-f5ba-4d35-912d-de51174ee385",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1296,
+        2272
+      ],
+      "id": "dc93cac3-14b2-4aa8-9dce-538a032b0fb7",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO properties (\n    site, source_url, titulo, descripcion, imagen_principal,\n    dormitorios, banos, ambientes, garage, \n    superficie_total_m2, superficie_cubierta_m2, \n    precio_valor, moneda, precio_texto,\n    created_at, updated_at\n)\nVALUES (\n    $1, $2, $3, $4, $5, \n    $6, $7, $8, $9, \n    $10, $11, \n    $12, $13, $14,\n    NOW(), NOW()\n)\nON CONFLICT (source_url) \nDO UPDATE SET \n    precio_valor = EXCLUDED.precio_valor,\n    moneda = EXCLUDED.moneda,              \n    precio_texto = EXCLUDED.precio_texto,\n    updated_at = NOW()\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.prop_site,           // $1\n  $json.doc_source_url,      // $2\n  $json.prop_titulo,         // $3\n  $json.prop_descripcion,    // $4\n  $json.prop_imagen,         // $5\n  $json.prop_dormitorios,    // $6\n  $json.prop_banos,          // $7\n  $json.prop_ambientes,      // $8\n  $json.prop_garage,         // $9\n  $json.prop_superficie_total,     // $10 \n  $json.prop_superficie_cubierta,  // $11 \n  $json.prop_precio_val,     // $12\n  $json.prop_moneda,         // $13\n  $json.prop_precio_texto    // $14 \n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        912,
+        2144
+      ],
+      "id": "fc99d86b-e9ac-4ae7-81f0-8cf16e225535",
+      "name": "Insertar propiedades",
+      "credentials": {
+        "postgres": {
+          "id": "qR3VhZZUNpkGynF6",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO property_documents (\n    id, property_id, content, metadata, embedding, last_seen, is_active\n)\nVALUES (\n    $1, \n    $2::uuid, \n    $3, \n    $4::jsonb, \n    $5::vector, \n    NOW(), \n    true\n)\nON CONFLICT (id) DO UPDATE SET\n    content = EXCLUDED.content,\n    metadata = EXCLUDED.metadata,\n    embedding = EXCLUDED.embedding,\n    last_seen = NOW();",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.doc_id,             // $1 (ID tipo URL/Hash)\n  $json.id,                 // $2 (UUID de la tabla properties, viene del Merge)\n  $json.doc_content,        // $3\n  $json.doc_metadata_json,  // $4\n  $json.doc_embedding_str   // $5\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1536,
+        2272
+      ],
+      "id": "4d77337e-0f8f-4450-9559-dc1ebbc7aae5",
+      "name": "Insertar documentos",
+      "credentials": {
+        "postgres": {
+          "id": "qR3VhZZUNpkGynF6",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputItems = $input.all();\n\n// Asegurate de que este nombre sea EXACTO al de tu nodo anterior\nconst sourceNodeName = \"preparar el texto para que OpenAI lo convierta en un vector\";\n\nlet sourceData = [];\ntry {\n  sourceData = $(sourceNodeName).all();\n} catch (e) {\n  // Si falla (común en loops), no pasa nada, usaremos el input directo\n}\n\n// --- HELPER DE LIMPIEZA FINAL ---\nconst cleanText = (val) => {\n  if (!val || typeof val !== 'string') return val;\n  return val\n    .replace(/&nbsp;/g, ' ')  // Adiós espacio duro\n    .replace(/<[^>]*>?/gm, '') // Adiós tags HTML remanentes\n    .replace(/\\s+/g, ' ')     // Adiós espacios dobles\n    .trim();\n};\n\nreturn inputItems.map((item, index) => {\n  // Intentamos obtener datos de todas las fuentes posibles\n  const current = item.json || {};\n  const backup = sourceData[index]?.json || {};\n  \n  // Función \"Buscador\" (Tu lógica, mejorada)\n  const find = (keys) => {\n    const keyList = Array.isArray(keys) ? keys : [keys];\n    for (const k of keyList) {\n      if (current[k] != null && current[k] !== \"\") return current[k];\n      if (backup[k] != null && backup[k] !== \"\") return backup[k];\n      if (current.metadata?.[k] != null) return current.metadata[k];\n    }\n    return null;\n  };\n\n  const embedding = current.embedding || current.data?.[0]?.embedding;\n  \n  // Extraemos valores para usarlos en ambas tablas\n  const descripcionLimpia = cleanText(find(['descripcion', 'description']));\n  const tituloLimpio = cleanText(find(['titulo', 'title']));\n  const precioVal = find(['precio_valor', 'precio']);\n  const superficieTot = find(['superficie_total', 'superficie_total_m2']);\n\n  return {\n    json: {\n      // --- 1. CAMPOS PARA TABLA 'properties' (SQL Puro) ---\n      prop_site: find('site') || 'melisaschwab',\n      doc_source_url: find(['source_url', 'url']),\n      prop_titulo: tituloLimpio,\n      prop_descripcion: descripcionLimpia, // ¡Ahora va limpio!\n      prop_imagen: find(['imagen_principal', 'image']),\n      \n      // Datos numéricos (Parseados por seguridad)\n      prop_dormitorios: parseInt(find(['dormitorios', 'rooms'])) || null,\n      prop_banos: parseInt(find(['banos', 'bathrooms'])) || null,\n      prop_ambientes: parseInt(find(['ambientes', 'rooms_total'])) || null,\n      prop_garage: parseInt(find(['garage', 'cocheras'])) || null,\n      prop_superficie_total: parseInt(superficieTot) || null,\n      prop_superficie_cubierta: parseInt(find(['superficie_cubierta', 'superficie_cubierta_m2'])) || null,\n      \n      prop_precio_val: parseInt(precioVal) || null,\n      prop_moneda: find(['moneda', 'currency']),\n      prop_precio_texto: find('precio_texto'),\n      \n      // --- 2. CAMPOS PARA TABLA 'property_documents' (Vectores) ---\n      doc_id: find('id') || `id-${Date.now()}-${index}`,\n      doc_content: find('content'), \n      doc_embedding_str: embedding ? `[${embedding.join(',')}]` : null,\n      \n      // METADATA LIMPIA (JSONB)\n      // Construimos un objeto explícito para no guardar basura\n      doc_metadata_json: JSON.stringify({\n         source_url: find(['source_url', 'url']),\n         titulo: tituloLimpio,\n         precio: parseInt(precioVal) || null,\n         moneda: find(['moneda', 'currency']),\n         superficie: parseInt(superficieTot) || null,\n         dormitorios: parseInt(find(['dormitorios', 'rooms'])) || null,\n         banos: parseInt(find(['banos', 'bathrooms'])) || null,\n         site: 'melisaschwab',\n         garage: parseInt(find(['garage', 'cocheras'])) || null\n      })\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        2400
+      ],
+      "id": "618a7717-d4d3-4348-b3a2-7725243d11af",
+      "name": "Formateador de items recibidos"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// CONFIGURACIÓN: Mode = Run for Each Item\nconst json = $json;\n\n// 1. GENERAR ID ÚNICO (Hash estable basado en la URL)\nfunction simpleHash(str) {\n  let hash = 0;\n  if (!str) return hash;\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = (hash << 5) - hash + char;\n    hash = hash & hash; // Convert to 32bit integer\n  }\n  return \"url_\" + Math.abs(hash);\n}\n\nconst id = json.id || simpleHash(json.source_url) || `temp_${Math.floor(Math.random() * 100000)}`;\n\n// 2. PREPARAR CONTENIDO PARA LA IA (RAG)\n// Aquí juntamos los datos ricos que extrajimos con Browserless\nconst parts = [\n  json.titulo ? `Título: ${json.titulo}` : null,\n  json.operation ? `Operación: ${json.operation}` : null,\n  json.descripcion ? `Descripción: ${json.descripcion}` : null,\n  // Usamos el precio limpio si existe\n  json.precio_texto ? `Precio: ${json.precio_texto}` : (json.precio_valor ? `Precio: ${json.precio_valor} ${json.moneda || 'USD'}` : null),\n  json.dormitorios ? `Dormitorios: ${json.dormitorios}` : null,\n  json.banos ? `Baños: ${json.banos}` : null,\n  json.garage ? `Cocheras: ${json.garage}` : null,\n  json.superficie_total_m2 ? `Superficie Total: ${json.superficie_total_m2} m2` : null,\n  json.superficie_cubierta_m2 ? `Superficie Cubierta: ${json.superficie_cubierta_m2} m2` : null,\n  json.source_url ? `URL: ${json.source_url}` : null\n];\n\nconst content = parts.filter(Boolean).join(\"\\n\");\n\n// 3. LIMPIEZA DE METADATA (CRÍTICO)\n// Creamos una copia de los datos para metadata\nconst metadata = {\n  ...json,\n  site: json.site || \"melisaschwab\",\n  processed_at: new Date().toISOString()\n};\n\n// ¡BORRAMOS LA BASURA! \n// Browserless manda el HTML entero en 'data' o 'content'. \n// Si no borramos esto, tu base de datos pesará gigas innecesariamente.\ndelete metadata.data; \ndelete metadata.html;\ndelete metadata.content; // Ojo: borramos el content viejo (HTML), no el nuevo que creamos arriba\n\n// 4. OUTPUT FINAL\nreturn {\n  ...json,      // Pasamos los datos crudos a la raíz para el Nodo 6 (Formateador)\n  id: id,       // ID para vector store\n  content: content, // Texto limpio para OpenAI\n  metadata: metadata // JSON limpio para guardar en DB\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        2384
+      ],
+      "id": "07473338-1c9b-45c6-aa16-7366e7bdbde9",
+      "name": "preparar el texto para que OpenAI lo convierta en un vector"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chrome.browserless.io/content?token=2TvgU7GF9kPuw0m4cd1c9c86843cbe8e8536efa7fcaa67307",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.source_url }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -672,
+        2592
+      ],
+      "id": "a5bbd87b-2bb1-479c-86ca-1bebd1257200",
+      "name": "Browserless"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -512,
+        2592
+      ],
+      "id": "15fc9ad7-51dd-4079-90a3-f121d860e81c",
+      "name": "Wait",
+      "webhookId": "2a5241ca-4b58-46a7-8442-f7926fc61160"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// CONFIGURACIÓN DEL NODO: Activa \"Run Once for Each Item\"\n\n// 1. Obtener HTML y URL\nconst html = $json.data || $json.content || $json || \"\"; \n// Usamos la URL que viene del nodo Browserless para asegurar que coincida con el Loop\nconst url = $json.url || $json.source_url; \n\n// --- HELPERS ---\nfunction cleanText(str) {\n  if (!str) return \"\";\n  let text = str.replace(/&lt;/g, '<').replace(/&gt;/g, '>')\n    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')\n    .replace(/&ntilde;/g, 'ñ').replace(/&Ntilde;/g, 'Ñ')\n    .replace(/&aacute;/g, 'á').replace(/&eacute;/g, 'é').replace(/&iacute;/g, 'í').replace(/&oacute;/g, 'ó').replace(/&uacute;/g, 'ú');\n  return text.replace(/<[^>]*>?/gm, ' ').replace(/\\s+/g, ' ').trim();\n}\n\nfunction extractByClass(className) {\n  const regex = new RegExp(`class=[\"'][^\"']*\\\\b${className}\\\\b[^\"']*[\"'][\\\\s\\\\S]*?<strong[^>]*>([\\\\s\\\\S]*?)<\\\\/strong>`, 'i');\n  const match = html.match(regex);\n  return match ? match[1].trim() : null;\n}\n\nfunction extractMeta(property) {\n  const regex = new RegExp(`<meta[^>]+property=[\"']${property}[\"'][^>]+content=[\"']([^\"']+)[\"']`, 'i');\n  const match = html.match(regex);\n  return match ? match[1] : null;\n}\n\n// --- EXTRACCIÓN ---\nconst precioRaw = extractByClass('preciogen'); \nconst descripcionRaw = extractMeta('og:description') || extractMeta('description') || \"\";\nconst descripcionLimpia = cleanText(descripcionRaw);\n\n// --- AJUSTE DE COCHERAS (Tu lógica ganadora) ---\nlet garage = extractByClass('coccant') || extractByClass('gargcant'); \n\n// --- DETECCIÓN DE MONEDA Y VALOR ---\nlet precioValor = null;\nlet moneda = null;\n\nif (precioRaw) {\n    // Detectamos si es USD o ARS\n    if (precioRaw.includes('U$S') || precioRaw.includes('USD')) moneda = 'USD';\n    else if (precioRaw.includes('$')) moneda = 'ARS';\n    \n    // Limpiamos el número\n    const soloNumeros = precioRaw.replace(/[^0-9]/g, '');\n    precioValor = soloNumeros ? parseInt(soloNumeros) : null;\n}\n\n// --- VALIDACIÓN (El Portero) ---\n// Si no hay URL o no hay Título, marcamos como 'skipped' para no ensuciar la DB\nconst titulo = extractMeta('og:title');\nif (!url || !titulo) {\n    return {\n        json: { skipped: true, reason: \"Falta URL o Título\", source_url: url }\n    };\n}\n\nreturn {\n  source_url: url,\n  site: \"melisaschwab\",\n  \n  precio_texto: precioRaw || \"Consultar\",\n  titulo: titulo || \"Sin Título\",\n  descripcion: descripcionLimpia,\n  imagen_principal: extractMeta('og:image'),\n  \n  // Datos numéricos\n  precio_valor: precioValor,\n  moneda: moneda, // <--- Nuevo campo importante\n  \n  superficie_total_m2: parseInt(extractByClass('suptotal')) || null,\n  superficie_cubierta_m2: parseInt(extractByClass('supcub')) || null,\n  dormitorios: parseInt(extractByClass('dorcant')) || null,\n  banos: parseInt(extractByClass('bancant')) || null,\n  ambientes: parseInt(extractByClass('ambcant')) || null,\n  \n  // Tu lógica de garage intacta:\n  garage: garage ? parseInt(garage.replace(/\\D/g,'')) : null,\n  \n  skipped: false\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        2448
+      ],
+      "id": "cd5a9532-1555-42a5-9359-173c68417320",
+      "name": "Code Scraper"
+    },
+    {
+      "parameters": {
+        "content": "## Insertar datos a la base vectorial (Supabase)",
+        "height": 800,
+        "width": 1200,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        608,
+        2000
+      ],
+      "typeVersion": 1,
+      "id": "e7771759-ff7d-4899-bd20-ce70b48548f9",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        1920,
+        2256
+      ],
+      "id": "37b24540-48e2-4b81-aed5-584065d1d501",
+      "name": "Telegram Trigger",
+      "webhookId": "7673f083-d623-4193-a504-556f00141224",
+      "credentials": {
+        "telegramApi": {
+          "id": "IRSptdgoPbdVnnoy",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "=¡Bienvenido a la inmobiliaria de Melisa Schwab! 🏠 Soy tu asistente experto.\n\nPuedo analizar cientos de propiedades en segundos para encontrar la ideal para vos. Contame: ¿Qué zona buscás y cuál es tu presupuesto?\n\nTip: Podés escribirme o simplemente mandarme un audio contándome qué necesitás. 🎤",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2448,
+        2128
+      ],
+      "id": "0c17068e-c9ea-4c46-8979-57724d582c98",
+      "name": "Mensaje de bienvenida",
+      "webhookId": "4d87e8fb-a7f5-4c28-9486-38bc832b67be",
+      "credentials": {
+        "telegramApi": {
+          "id": "IRSptdgoPbdVnnoy",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fe09b4df-d0eb-4081-af7d-717c02610ee2",
+              "leftValue": "={{ $json.message?.text?.toLowerCase().trim() === '/start' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2208,
+        2256
+      ],
+      "id": "5e0e3fab-c650-4633-b4ef-1219bb982639",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Merge3').item.json.text ||  $('Merge3').item.json.query}}",
+        "options": {
+          "systemMessage": "Eres el vendedor experto de la Inmobiliaria Melisa Schwab. Tu misión es concretar visitas ayudando a los clientes a encontrar su propiedad ideal.\n\n⚠️ INSTRUCCIÓN TÉCNICA (SISTEMA - JSON):\nNo respondas con texto plano. Tu salida debe ser ÚNICAMENTE un objeto JSON válido con esta estructura exacta:\n\n{\n  \"imagen\": \"Aquí pones la URL de 'imagen_principal' (https://cdn-images...). Si no hay foto, pon null\",\n  \"mensaje\": \"Aquí escribes el texto de venta generado siguiendo las reglas de formato HTML de abajo.\"\n}\n\n⚠️ REGLAS DE \"SILENCIO\" (CRÍTICO - LO QUE NO DEBES DECIR):\n1. 🔇 JAMÁS MENCIONES LA HERRAMIENTA: Prohibido decir frases como \"Consulté consultar_inmobiliaria\", \"Busqué en la base de datos\" o \"Según la herramienta\".\n2. 🚫 NO EXPLIQUES TU PROCESO: No digas \"Encontré esta opción diferente\". Simplemente presenta la casa con entusiasmo, como si la conocieras de memoria.\n3. 🎭 ACTUACIÓN TOTAL: El cliente cree que eres una persona. No rompas esa ilusión mencionando instrucciones del sistema.\n\n⚠️ REGLAS PARA EL CAMPO 'mensaje' (FORMATO Y CONTENIDO):\n\n1. 🎨 FORMATO OBLIGATORIO (SOLO HTML):\n   - 🛑 PROHIBIDO usar Markdown (NO uses asteriscos * ni guiones bajos _).\n   - ✅ Usa etiquetas HTML para resaltar: <b>Precio:</b>, <b>Ubicación:</b>.\n   - ✅ Para medidas, usa la letra 'x' (ej: \"lote de 10x30\"), JAMÁS el asterisco '*'.\n   - ✅ Para listas, usa guiones simples '-'.\n\n2. 📝 ESTRUCTURA DEL TEXTO:\n   - Encabezado atractivo con emoji (Ej: \"¡Mirá lo que entró en San Vicente! 🏠\").\n   - <b>Resumen:</b> (Escribe aquí la descripción destacando lo bueno: pileta, parrilla, luz).\n   - 💰 <b>Precio:</b> (Si es null, pon 'A consultar').\n   - 📍 <b>Ubicación:</b> (Barrio o Ciudad).\n   - 🔗 <a href=\"{source_url}\">Ver ficha completa en la web</a>\n   - 📞 Cierre: \"Llamanos al 2284-203480 para coordinar una visita\".\n\n3. 🗣 TONO: Sé amable, persuasivo y usa emojis. Habla en español de Argentina."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3408,
+        2128
+      ],
+      "id": "775dc0dd-7eea-4dd9-a620-51417ab846f2",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        3360,
+        2352
+      ],
+      "id": "1155d6e8-ddef-4338-9ce1-6ca1e9a31b4f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "1vQHHPJ9UoBaUN81",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{$json.message.voice?.file_id || $json.message.audio?.file_id}}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2656,
+        2480
+      ],
+      "id": "3fb7ab53-4b14-4e55-ad95-d3221b85ad4e",
+      "name": "Get a file",
+      "webhookId": "61d5afe3-4bf4-41ae-ac86-6f6704f4ebb5",
+      "credentials": {
+        "telegramApi": {
+          "id": "IRSptdgoPbdVnnoy",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "15dd90a0-03db-40f1-b66e-648bab66c310"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Rama A (Mensaje de texto)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "40b407bd-bb77-4b29-960a-865e6e9795e9",
+                    "leftValue": "={{ $json.message.voice }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Rama B (Procesar audio)"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2400,
+        2368
+      ],
+      "id": "e37aae54-c11b-4b94-8800-24488ae7c334",
+      "name": "Texto o Audio"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {
+          "language": "es",
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        2976,
+        2480
+      ],
+      "id": "b66c74f3-dcb3-4f5b-8fd4-5a880749fc16",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "1vQHHPJ9UoBaUN81",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6bc1bf98-db85-4b40-b441-604c640f123c",
+              "name": "query",
+              "value": "={{ $json.text ?? $json.message.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2656,
+        2256
+      ],
+      "id": "86ec81a8-584c-43f1-af81-acbc42241edc",
+      "name": "query"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Utiliza esta herramienta para buscar propiedades inmobiliarias, casas o departamentos en venta/alquiler basados en la ubicación, precio y características que pida el usuario.",
+        "tableName": {
+          "__rl": true,
+          "value": "property_documents",
+          "mode": "list",
+          "cachedResultName": "property_documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        3680,
+        2336
+      ],
+      "id": "9626171e-cafb-47e2-aeb7-d7952717f383",
+      "name": "Supabase Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "yAeaa3xPSA0iZhpM",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3680,
+        2560
+      ],
+      "id": "63b5fd00-a053-4e8a-8305-abe1692164c8",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "1vQHHPJ9UoBaUN81",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        112,
+        2096
+      ],
+      "id": "76b72342-0035-4d22-a6c9-1778235b7c59",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Obtenemos TODOS los items (las 5 páginas)\nconst allItems = $input.all();\nlet allLinks = [];\n\n// 2. Iteramos por cada página para sacar sus links\nfor (const item of allItems) {\n    const links = item.json.data.extract?.links_casas || [];\n    allLinks = allLinks.concat(links);\n}\n\n// 3. Filtros y limpieza de duplicados\nconst validLinks = allLinks.filter(link => \n  link.includes('melisaschwabinmobiliaria.com.ar') && \n  !link.endsWith('/propiedades')\n);\nconst uniqueLinks = [...new Set(validLinks)];\n\n// 4. Devolvemos la lista completa (aquí deberías ver ~60)\nreturn uniqueLinks.map(url => ({ json: { url } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        2096
+      ],
+      "id": "07a2e0d6-1ddf-4ba1-98cc-f33b87f544c8",
+      "name": "Poll FireCrawl Status",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "tableName": "chat_logs"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        3504,
+        2336
+      ],
+      "id": "c1e6b237-eb37-41cc-8800-89911c956080",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "qR3VhZZUNpkGynF6",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2912,
+        2128
+      ],
+      "id": "bebd41f6-14ad-44ab-bbe3-11a943f21d34",
+      "name": "Merge3"
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "file": "={{ JSON.parse($('AI Agent').item.json.output).imagen }}",
+        "additionalFields": {
+          "caption": "={{ JSON.parse($('AI Agent').item.json.output).mensaje }}",
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4320,
+        2048
+      ],
+      "id": "ae1ad201-f094-461b-8d52-fc713fdb2518",
+      "name": "Send a photo message",
+      "webhookId": "17ea8315-7d87-4740-8a9e-33796e214867",
+      "credentials": {
+        "telegramApi": {
+          "id": "IRSptdgoPbdVnnoy",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "## Rag",
+        "height": 800,
+        "width": 2720,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1840,
+        2000
+      ],
+      "typeVersion": 1,
+      "id": "df2533ea-d3b0-4dce-9731-6a8cb492ae7b",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "operation": "deleteMessage",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "messageId": "={{ $('Buscando').item.json.result.message_id }}"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3840,
+        2112
+      ],
+      "id": "6dce5994-b619-460d-8b78-78f2ea15fc7c",
+      "name": "Borrar mensaje de espera",
+      "webhookId": "4d87e8fb-a7f5-4c28-9486-38bc832b67be",
+      "credentials": {
+        "telegramApi": {
+          "id": "IRSptdgoPbdVnnoy",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "493d52b3-c475-4d21-b699-0199d89f28dd",
+              "leftValue": "={{ JSON.parse($('AI Agent').item.json.output).imagen }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "6b310c70-e935-46f6-b9ed-36027c2c8f7f",
+              "leftValue": "={{ JSON.parse($('AI Agent').item.json.output).imagen }}",
+              "rightValue": "null",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        4048,
+        2112
+      ],
+      "id": "fc851310-46c6-4824-ad51-688ab6dbf7a9",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ JSON.parse($('AI Agent').item.json.output).mensaje }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4320,
+        2208
+      ],
+      "id": "b96a528e-1f05-4aac-a3a1-2da7ca04f7ff",
+      "name": "Send a text message",
+      "webhookId": "17ea8315-7d87-4740-8a9e-33796e214867",
+      "credentials": {
+        "telegramApi": {
+          "id": "IRSptdgoPbdVnnoy",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "🔍 Buscando propiedades...",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3152,
+        2128
+      ],
+      "id": "fc3a6ca6-fa3e-4484-bf81-602f5865ba71",
+      "name": "Buscando",
+      "webhookId": "4d87e8fb-a7f5-4c28-9486-38bc832b67be",
+      "credentials": {
+        "telegramApi": {
+          "id": "IRSptdgoPbdVnnoy",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Iniciar Scraping": {
+      "main": [
+        [
+          {
+            "node": "Generador de Páginas2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FireCrawl - Crawl Listados1": {
+      "main": [
+        [
+          {
+            "node": "Poll FireCrawl Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeber los datos - OpenAi2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Generador de Páginas2": {
+      "main": [
+        [
+          {
+            "node": "FireCrawl - Crawl Listados1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "preparar el texto para que OpenAI lo convierta en un vector",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LOG FAIL2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Browserless",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Formateador de items recibidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar propiedades": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Insertar documentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formateador de items recibidos": {
+      "main": [
+        [
+          {
+            "node": "Insertar propiedades",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "preparar el texto para que OpenAI lo convierta en un vector": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Embeber los datos - OpenAi2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Browserless": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code Scraper": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Mensaje de bienvenida",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Texto o Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Borrar mensaje de espera",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Texto o Audio": {
+      "main": [
+        [
+          {
+            "node": "query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "query": {
+      "main": [
+        [
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll FireCrawl Status": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge3": {
+      "main": [
+        [
+          {
+            "node": "Buscando",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a photo message": {
+      "main": [
+        []
+      ]
+    },
+    "Borrar mensaje de espera": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Send a photo message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscando": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "49097b09-f3a3-4f66-b81d-638d7a768569",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cd4ba3827798ca193b349a77603e4a19e494620ba11526d5e46075c51725ae9a"
+  },
+  "id": "y3Fo1Vqv7ZhieQG-hRMXu",
+  "tags": [
+    {
+      "updatedAt": "2026-02-04T19:14:46.429Z",
+      "createdAt": "2026-02-04T19:14:46.429Z",
+      "id": "aLbbaQBYQKK7XFt1",
+      "name": "Bot"
+    }
+  ]
+}
