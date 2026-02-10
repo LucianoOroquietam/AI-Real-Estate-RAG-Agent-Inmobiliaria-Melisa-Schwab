@@ -153,6 +153,10 @@ El proyecto se sustenta sobre un stack tecnológico moderno de **AI-Orchestratio
 
 * [Telegram Bot API](https://core.telegram.org/bots/api): Documentación oficial para el manejo de mensajes, envío de fotos nativas y formateo HTML/Markdown.
 
+### **Web Scraping**
+
+* [Melisa Schwab](https://www.melisaschwabinmobiliaria.com.ar/): Web que se utilizo para scrapear datos.
+
 ## 7. Próximos Pasos & Mejoras Futuras
 
 El sistema está diseñado para ser escalable. Las siguientes iteraciones planificadas incluyen:
