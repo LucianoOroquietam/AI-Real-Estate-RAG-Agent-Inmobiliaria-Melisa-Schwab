@@ -303,7 +303,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://chrome.browserless.io/content?token=2TvgU7GF9kPuw0m4cd1c9c86843cbe8e8536efa7fcaa67307",
+        "url": "https://chrome.browserless.io/content?token=INGRESAR TU TOKEN - ESTe token lo revoque es solo de prueba la idea no es dejarlo aca , pero para fines de prueba local no hay problema",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"url\": \"{{ $json.source_url }}\"\n}",
